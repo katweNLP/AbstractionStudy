@@ -1,15 +1,16 @@
-"""
-# My first app
-Here's our first attempt at using data to create a table:
-"""
+
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 import time 
-
-
+import random
+import string
+from numpy import savetxt
 import csv
+from numpy import loadtxt
+from datasets import load_metric
+
 
 m_location="metrics_cache/"
 p_location="prediction_cache/"
@@ -26,19 +27,19 @@ class SummarizerResults:
     ref_summ=[]
     gen_summ=[]
     rougescores=[]
+    
     def __init__(self, ResultsFile,input_text,ref_summ,gen_summ, reccount=0,name=""):
         self.ResultsFile = ResultsFile
         self.input_text=input_text
         self.ref_summ=ref_summ
         self.gen_summ=gen_summ
         self.reccount = reccount
-        
         self.modelname=name.replace("/",'_')
        
         
         
     def dump_metrics_to_file(self):
-            from numpy import savetxt
+           
             rouge1=[]
             rouge2=[]
             rougeL=[]
@@ -65,7 +66,7 @@ class SummarizerResults:
                 summabs_r2.append(1-stabscore[i]['rouge2'])
                 summabs_rL.append(1-stabscore[i]['rougeL'])
                 
-            
+            #st.write(refabs_r2)
                 
             nprouge1=np.array(rouge1)
             nprouge2=np.array(rouge2)
@@ -123,6 +124,7 @@ class SummarizerResults:
     @st.cache(suppress_st_warning=True)
     def compute_Reference_Abstraction(self):
         ref_rouge=compute_rouge(self.ref_summ,self.input_text,self.reccount)
+        
         return ref_rouge
     
     @st.cache(suppress_st_warning=True)
@@ -132,7 +134,7 @@ class SummarizerResults:
     def compute_Abstration_Ratio(self):
         abs_ratio=[]
         self.rougescores
-    def newchart_rouges(self):
+    def newchart_rouges(self,col1):
         
 # load numpy array from csv file
         from numpy import loadtxt
@@ -147,24 +149,98 @@ class SummarizerResults:
         npsummabs_r2=loadtxt(m_location+self.modelname+'_summabs_R2.csv',delimiter=",")
         npsummabs_rL=loadtxt(m_location+self.modelname+'_summabs_RL.csv',delimiter=",")
         
-        npratio_r1=(loadtxt(m_location+self.modelname+'_absratio_R1.csv',delimiter=","))/100
-        npratio_r2=(loadtxt(m_location+self.modelname+'_absratio_R2.csv',delimiter=","))/100
-        npratio_rL=(loadtxt(m_location+self.modelname+'_absratio_RL.csv',delimiter=","))/100
+        npratio_r1=(loadtxt(m_location+self.modelname+'_absratio_R1.csv',delimiter=","))
+        npratio_r2=(loadtxt(m_location+self.modelname+'_absratio_R2.csv',delimiter=","))
+        npratio_rL=(loadtxt(m_location+self.modelname+'_absratio_RL.csv',delimiter=","))
         
         
         count=self.reccount-1
+        cols=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL']
+        saved_cols=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL']
+        temp={'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL, 'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL ,'SA1' : npsummabs_r1 , 'SA2' : npsummabs_r2 , 'SAL' : npsummabs_rL , 'AR1' : npratio_r1,'AR2': npratio_r2 , 'ARL': npratio_rL }
+        saved_temp=temp
+        metriclist=cols
+        options = col1.multiselect('choose metrics to Hide', metriclist, metriclist,key=self.modelname)
+        #st.write('You selected:', options)
+
+        if(len(options)!=len(cols)):
+            cols=saved_cols
+            temp=saved_temp
+            difference_1 = set(cols).difference(set(options))
+            difference_2 = set(options).difference(set(options))
+           
+            if(len(difference_1)>1):
+                for i in list(difference_1):
+                    temp.pop((i))
+                    cols.remove((i))
+            else:
+                
+                temp.pop(list(difference_1)[0])
+                cols.remove(list(difference_1)[0])
         
-        dataset=pd.DataFrame({'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL, 'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL ,'SA1' : npsummabs_r1 , 'SA2' : npsummabs_r2 , 'SAL' : npsummabs_rL , 'AR1' : npratio_r1,'AR2': npratio_r2 , 'ARL': npratio_rL },( str(i+1)  +"_Article" for i in range(count) ),columns=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL'])
+       
+       # temp.pop("Rouge2")
+        
+        
+       
+       # cols.remove("Rouge2")
+       
+        dataset=pd.DataFrame(temp,( str(i+1)  +"_Article" for i in range(count) ),columns=cols)
+       # dataset=pd.DataFrame({'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL, 'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL ,'SA1' : npsummabs_r1 , 'SA2' : npsummabs_r2 , 'SAL' : npsummabs_rL , 'AR1' : npratio_r1,'AR2': npratio_r2 , 'ARL': npratio_rL },( str(i+1)  +"_Article" for i in range(count) ),columns=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL'])
        # st.write(np.transpose(self.rougescores)[1]['rouge1'])
-        st.dataframe(dataset.style.highlight_max(axis=0))
-        st.write(dataset)
         
-        st.write(type((self.rougescores[:])))
+       # dataset=pd.DataFrame({'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL}, ( str(i+1)  +"_Article" for i in range(count)),columns=['Rouge1','Rouge2','RougeL'])
+     
+       # dataset=pd.DataFrame({'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL },( str(i+1)  +"_Article" for i in range(count)),columns=['RA1', 'RA2' ,'RAL'])
+        col1.line_chart(dataset) 
+        col1.dataframe(dataset.style.highlight_min(axis=0))
+        #st.write(dataset)
+        #col1.write(dataset)
+       
         
        # chart_data = pd.DataFrame(nprouge1,("Article_" + str(i+1) for i in range(131)),columns=['Rouge1','Rouge2'])
     
         #st.write(chart_data)
-        st.line_chart(dataset)    
+           
+        
+    def old_newchart_rouges(self,col1):
+        
+# load numpy array from csv file
+        from numpy import loadtxt
+        
+        nprouge1=loadtxt(m_location+self.modelname+'_Rouge1.csv',delimiter=",")
+        nprouge2=loadtxt(m_location+self.modelname+'_Rouge2.csv',delimiter=",")
+        nprougeL=loadtxt(m_location+self.modelname+'_RougeL.csv',delimiter=",")
+        nprefabs_r1=loadtxt(m_location+self.modelname+'_Refabs_R1.csv',delimiter=",")
+        nprefabs_r2=loadtxt(m_location+self.modelname+'_Refabs_R2.csv',delimiter=",")
+        nprefabs_rL=loadtxt(m_location+self.modelname+'_Refabs_RL.csv',delimiter=",")
+        npsummabs_r1=loadtxt(m_location+self.modelname+'_summabs_R1.csv',delimiter=",")
+        npsummabs_r2=loadtxt(m_location+self.modelname+'_summabs_R2.csv',delimiter=",")
+        npsummabs_rL=loadtxt(m_location+self.modelname+'_summabs_RL.csv',delimiter=",")
+        
+        npratio_r1=(loadtxt(m_location+self.modelname+'_absratio_R1.csv',delimiter=","))
+        npratio_r2=(loadtxt(m_location+self.modelname+'_absratio_R2.csv',delimiter=","))
+        npratio_rL=(loadtxt(m_location+self.modelname+'_absratio_RL.csv',delimiter=","))
+        
+        
+        count=self.reccount-1
+        
+        dataset=pd.DataFrame({'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL, 'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL ,'SA1' : npsummabs_r1 , 'SA2' : npsummabs_r2 , 'SAL' : npsummabs_rL , 'AR1' : npratio_r1,'AR2': npratio_r2 , 'ARL': npratio_rL },( "<a>" + str(i+1)  +"_Article</a>" for i in range(count) ),columns=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL'])
+       # st.write(np.transpose(self.rougescores)[1]['rouge1'])
+        
+       # dataset=pd.DataFrame({'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL}, ( str(i+1)  +"_Article" for i in range(count)),columns=['Rouge1','Rouge2','RougeL'])
+        col1.write(dataset)
+       # dataset=pd.DataFrame({'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL },( str(i+1)  +"_Article" for i in range(count)),columns=['RA1', 'RA2' ,'RAL'])
+        
+        col1.dataframe(dataset.style.highlight_min(axis=0))
+        #st.write(dataset)
+        
+       
+        
+       # chart_data = pd.DataFrame(nprouge1,("Article_" + str(i+1) for i in range(131)),columns=['Rouge1','Rouge2'])
+    
+        #st.write(chart_data)
+        col1.line_chart(dataset)    
         
     def chart_rouges(self):
         
@@ -203,6 +279,8 @@ class SummarizerResults:
     
         #st.write(chart_data)
         st.line_chart(dataset)
+
+
    
     
 
@@ -211,10 +289,10 @@ class SummarizerResults:
 
 
 def Read_file(arg1):
-   
+    
     latest_iteration = st.empty()
     data=[]
-    st.write("Reading the file: " + arg1)
+    
     with open(arg1, newline='',encoding='utf-8') as csvfile:
         data = list(csv.reader(csvfile,delimiter=',' ))
     reccount=len(data)
@@ -228,10 +306,34 @@ def Read_file(arg1):
         ref_summ.append(data[i][1])
         gen_summ.append(data[i][2])
         #st.write(gen_summ)
-    st.write("Finished reading "+ arg1+ " file into memory.It Contains "+ str(reccount) +" records.");
+    col1=st.expander(data[0][2])
+    col1.write("Finished reading "+ arg1+ " file into memory.It Contains "+ str(reccount) +" records.");
     
-    return input,ref_summ,gen_summ,reccount,data[0][2]
+    return input,ref_summ,gen_summ,reccount,data[0][2],col1
 
+def second_compute_rouge(gen_summ,ref_summ,reccount):
+    from rouge import Rouge 
+    rouger = Rouge()
+    result0=[]
+    results0=[]
+    for i in range(1):
+        scores = rouger.get_scores(gen_summ[i],ref_summ[i]) 
+        st.write(scores)
+        result0.append(scores)
+        results0.append({k1: (v1['f']) for k1, v1 in scores[0].items()})
+        #st.write({k1: (v1['f']) for k1, v1 in scores[0].items()})
+    st.write("printing")
+    for x, y in scores[0].items():
+        st.write(x, y["f"])
+    
+    st.write("typeofcores",type(scores))
+    st.write("typeofresult0",type(result0))
+    st.write("scores",scores)
+    st.write("typeofscore0item",type(scores[0].items()))
+    
+   # st.write("results0",results0[0])
+    st.write(done)
+    return results0
 def compute_rouge(gen_summ,ref_summ,reccount):
 
     from datasets import load_metric
@@ -240,7 +342,24 @@ def compute_rouge(gen_summ,ref_summ,reccount):
     results0=[]
     for i in range(reccount-1):
         result0.append(rouge_score.compute(predictions=[gen_summ[i]], references=[ref_summ[i]]))
+      
+        results0.append({k1: max(v1.mid.fmeasure,0.001) for k1, v1 in result0[i].items()})
+    #st.write("result0",result0)
+    #st.write("results0",results0)
+    return results0
+  
+    
+def old_compute_rouge(gen_summ,ref_summ,reccount):
+
+    from datasets import load_metric
+    rouge_score = load_metric('rouge')
+    result0=[]
+    results0=[]
+    for i in range(reccount-1):
+        result0.append(rouge_score.compute(predictions=[gen_summ[i]], references=[ref_summ[i]]))
         results0.append({k1: round(1-v1.mid.fmeasure, 2) for k1, v1 in result0[i].items()})
+    st.write(result0)
+    st.write(results0)
     return results0
 
 def Process_cachedfiles(listoffiles):   
@@ -272,40 +391,70 @@ def Process_files(listoffiles):
     i=0
     models=[]
     for fname in listoffiles:
+        
         fname=p_location+fname
-        st.write("Started Processing ..." + fname)
+        
         input_text=[]
         ref_summ=[]
         gen_summ=[]
-        input_text,ref_summ,gen_summ,reccount,name=Read_file(fname)
+        input_text,ref_summ,gen_summ,reccount,name,col1=Read_file(fname)
+        
+       
         models.append(SummarizerResults(fname,input_text,ref_summ,gen_summ,reccount,name))
-        st.title(models[i].modelname)
-        st.write("Input Text")
-        st.write(models[i].input_text)
-        st.write("Reference Summary")
-        st.write(models[i].ref_summ)
-        st.write("Generated Summary")
-        st.write(models[i].gen_summ)
-        st.write("Rouge Scores")
-        st.write(models[i].calculate_metrics())
-        models[i].newchart_rouges()
-        st.write("Completed" )
+        col1.title(models[i].modelname)
+        
+        selectlist=[]
+        for k in range(0,reccount-1):
+            selectlist.append(k)
+
+        option = col1.selectbox('Choose article to review:',selectlist,key=name+"_input")
+        
+
+
+        col1.subheader("Input Text")            
+        col1.write(models[i].input_text[option])
+        col1.subheader("Reference Summary")
+        col1.write(models[i].ref_summ[option])
+        col1.subheader("Generated Summary")
+        col1.write(models[i].gen_summ[option])
+        col1.subheader("Rouge Scores")
+        col1.write(models[i].calculate_metrics())
+        
+        models[i].newchart_rouges(col1)
+        
         i=i+1
     st.session_state.computedmodels = models
         
 
 
-Filelist=['Dataset_distilbart.csv','Dataset_bart.csv','Dataset_pegasus.csv','Dataset_huggingface.csv']
-#Filelist=['Dataset_distilbart.csv']
+#Filelist=['Dataset_distilbart.csv','Dataset_bart.csv','Dataset_pegasus.csv','Dataset_huggingface.csv']
+Filelist=[]
 if 'Reload' not in st.session_state:
     st.session_state['Reload'] = 1
 
 Reload=st.session_state['Reload']
 st.write(Reload)
-if Reload==1:
+if  Reload==1:
+
+    # Using readlines()
+    file1 = open(p_location+'modellist.txt', 'r')
+    Lines = file1.readlines()
+    col1 = st.expander("List of Models ")
+    
+    count = 0
+    # Strips the newline character
+    for line in Lines:
+        count += 1
+        col1.write("Model{}: {}".format(count, line.strip()))
+        filename="Dataset_"+line.strip()
+        filename=filename.replace("/",'_')+".csv"
+        #st.write(filename)
+        Filelist.append(filename)
+            
     Process_files(Filelist)
-    Reload=0
+    Reload=1
     st.session_state['Reload']=Reload
 else:
-    process_cachedfiles(Filelist)
+    #process_cachedfiles(Filelist)
+    print("else")
     
