@@ -10,10 +10,10 @@ from numpy import savetxt
 import csv
 from numpy import loadtxt
 from datasets import load_metric
+from statistics import mean
 
-
-m_location="metrics_cache/"
-p_location="prediction_cache/"
+m_location="metrics_cache2/"
+p_location="prediction_cache2/"
 
 
 
@@ -153,16 +153,54 @@ class SummarizerResults:
         npratio_r2=(loadtxt(m_location+self.modelname+'_absratio_R2.csv',delimiter=","))
         npratio_rL=(loadtxt(m_location+self.modelname+'_absratio_RL.csv',delimiter=","))
         
+        avgr1=mean(nprouge1)
+        avgr2=mean(nprouge2)
+        avgrL=mean(nprougeL)
+        
+        avgrefabs_r1=mean(nprefabs_r1)
+        avgrefabs_r2=mean(nprefabs_r2)
+        avgrefabs_rL=mean(nprefabs_rL)
+        
+        avgsummabs_r1=mean(npsummabs_r1)
+        avgsummabs_r2=mean(npsummabs_r2)
+        avgsummabs_rL=mean(npsummabs_rL)
+        
+        avgratio_r1=mean(npratio_r1)
+        avgratio_r2=mean(npratio_r2)
+        avgratio_rL=mean(npratio_rL)
+        
+        self.nprouge1=nprouge1
+        self.nprouge2=nprouge2
+        self.nprougeL=nprougeL
+        
+        self.nprefabs_r1=nprefabs_r1
+        self.nprefabs_r2=nprefabs_r2
+        self.nprefabs_rL=nprefabs_rL
+        
+        self.npsummabs_r1=npsummabs_r1
+        self.npsummabs_r2=npsummabs_r2
+        self.npsummabs_rL=npsummabs_rL
+        
+        self.npratio_r1=npratio_r1
+        self.npratio_r2=npratio_r2
+        self.npratio_rL=npratio_rL
+        
+        
+        
+        
+        
+        st.write(avgr1)
         
         count=self.reccount-1
         cols=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL']
+        
         saved_cols=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL']
         temp={'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL, 'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL ,'SA1' : npsummabs_r1 , 'SA2' : npsummabs_r2 , 'SAL' : npsummabs_rL , 'AR1' : npratio_r1,'AR2': npratio_r2 , 'ARL': npratio_rL }
         saved_temp=temp
         metriclist=cols
         options = col1.multiselect('choose metrics to Hide', metriclist, metriclist,key=self.modelname)
         #st.write('You selected:', options)
-
+        
         if(len(options)!=len(cols)):
             cols=saved_cols
             temp=saved_temp
@@ -178,21 +216,30 @@ class SummarizerResults:
                 temp.pop(list(difference_1)[0])
                 cols.remove(list(difference_1)[0])
         
-       
+        avgcols=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL']
+        avgtemp={'Avg R1': avgr1, 'Avg R2': avgr2 ,'Abg RL' : avgrL, 'Avg RA1' : avgrefabs_r1,'Avg RA2' : avgrefabs_r2, 'Avg RAL' : avgrefabs_rL ,'Avg SA1' : avgsummabs_r1 , 'Avg SA2' : avgsummabs_r2 , 'Avg SAL' : avgsummabs_rL , 'Avg AR1' : avgratio_r1,'Avg AR2': avgratio_r2 , 'Avg ARL': avgratio_rL }
        # temp.pop("Rouge2")
         
         
        
        # cols.remove("Rouge2")
-       
+        st.write(str(i+1)  +"_Article" for i in range(count) )
         dataset=pd.DataFrame(temp,( str(i+1)  +"_Article" for i in range(count) ),columns=cols)
+        avgdataset=pd.DataFrame(avgtemp,( f"{i:03d}"+str(i+1)  +"_Article" for i in range(12) ),columns=avgcols)
        # dataset=pd.DataFrame({'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL, 'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL ,'SA1' : npsummabs_r1 , 'SA2' : npsummabs_r2 , 'SAL' : npsummabs_rL , 'AR1' : npratio_r1,'AR2': npratio_r2 , 'ARL': npratio_rL },( str(i+1)  +"_Article" for i in range(count) ),columns=['Rouge1','Rouge2','RougeL','RA1', 'RA2' ,'RAL','SA1','SA2','SAL','AR1','AR2','ARL'])
        # st.write(np.transpose(self.rougescores)[1]['rouge1'])
         
        # dataset=pd.DataFrame({'Rouge1': nprouge1, 'Rouge2': nprouge2 ,'RougeL' : nprougeL}, ( str(i+1)  +"_Article" for i in range(count)),columns=['Rouge1','Rouge2','RougeL'])
      
        # dataset=pd.DataFrame({'RA1' : nprefabs_r1,'RA2' : nprefabs_r2, 'RAL' : nprefabs_rL },( str(i+1)  +"_Article" for i in range(count)),columns=['RA1', 'RA2' ,'RAL'])
-        col1.line_chart(dataset) 
+        col1.line_chart(dataset)
+        col1.area_chart(dataset)
+        col1.write(avgdataset)
+        col1.write(avgtemp)
+        #col1.line_chart(avgtemp)
+        #col1.line_chart(avgdataset)
+      #  col1.vega_lite_chart(dataset)
+        
         col1.dataframe(dataset.style.highlight_min(axis=0))
         #st.write(dataset)
         #col1.write(dataset)
@@ -302,14 +349,14 @@ def Read_file(arg1):
     gen_summ=[]
     for i in range(1,reccount):
         
-        input.append(data[i][0])
-        ref_summ.append(data[i][1])
-        gen_summ.append(data[i][2])
+        input.append(data[i][1])
+        ref_summ.append(data[i][2])
+        gen_summ.append(data[i][3])
         #st.write(gen_summ)
-    col1=st.expander(data[0][2])
+    col1=st.expander(data[0][3])
     col1.write("Finished reading "+ arg1+ " file into memory.It Contains "+ str(reccount) +" records.");
     
-    return input,ref_summ,gen_summ,reccount,data[0][2],col1
+    return input,ref_summ,gen_summ,reccount,data[0][3],col1
 
 def second_compute_rouge(gen_summ,ref_summ,reccount):
     from rouge import Rouge 
@@ -384,10 +431,14 @@ def Process_cachedfiles(listoffiles):
         
     
 
-  
+def display_common_scores(data,names,num=200,metricname='notprovided'):
+    
+    st.write(metricname)
+    dataset=pd.DataFrame(data=np.transpose(data),index=(  f"{i:03d}"+ "_Article" for i in range(num)),columns=names)
+    st.line_chart(dataset)  
     
 def Process_files(listoffiles):   
-    
+    debug=0
     i=0
     models=[]
     for fname in listoffiles:
@@ -406,7 +457,7 @@ def Process_files(listoffiles):
         selectlist=[]
         for k in range(0,reccount-1):
             selectlist.append(k)
-
+        st.write("Dummy:" + name)
         option = col1.selectbox('Choose article to review:',selectlist,key=name+"_input")
         
 
@@ -424,8 +475,74 @@ def Process_files(listoffiles):
         
         i=i+1
     st.session_state.computedmodels = models
+    common_modelnamelist=[]
+    common_rouge1=[]
+    common_rouge2=[]
+    common_rougeL=[]
+    common_nprefabs_r1=[]
+    common_nprefabs_r2=[]
+    common_nprefabs_rL=[]
+    
+    common_npsummabs_r1=[]
+    common_npsummabs_r2=[]
+    common_npsummabs_rL=[]
+    
+    common_npratio_r1=[]
+    common_npratio_r2=[]
+    common_npratio_rL=[]
+    
+    
+    modelnamelist=[]
+    
+    for model in models:
+      if(model.reccount>40):
         
-
+        if(debug==1):
+            st.write("name",model.modelname)
+            st.write("Rougescores",model.rougescores)
+            st.write(model.modelname+" Rouge1",model.nprouge1)
+            st.write(model.modelname+" Rouge2",model.nprouge2)
+            st.write(model.modelname+" RougeL",model.nprougeL)
+            st.write(model.modelname+" Reference Abstraction R1",model.nprefabs_r1)
+            st.write(model.modelname+" Reference Abstraction R2",model.nprefabs_r2)
+            st.write(model.modelname+" Reference Abstraction RL",model.nprefabs_rL)
+            st.write(model.modelname+" Summary Abstraction R1",model.npsummabs_r1)
+            st.write(model.modelname+" Summary Abstraction R2",model.npsummabs_r2)
+            st.write(model.modelname+" Summary Abstraction RL",model.npsummabs_rL)
+            st.write(model.modelname+" Abstration Ratio R1",model.npratio_r1)
+            st.write(model.modelname+" Abstration Ratio R2",model.npratio_r2)
+            st.write(model.modelname+" Abstration Ratio RL",model.npratio_rL)
+        
+        
+        common_modelnamelist.append(model.modelname)
+        common_rouge1.append(model.nprouge1)
+        common_rouge2.append(model.nprouge2)
+        common_rougeL.append(model.nprougeL)
+        common_nprefabs_r1.append(model.nprefabs_r1)
+        common_nprefabs_r2.append(model.nprefabs_r2)
+        common_nprefabs_rL.append(model.nprefabs_rL)
+        common_npsummabs_r1.append(model.npsummabs_r1)
+        common_npsummabs_r2.append(model.npsummabs_r2)
+        common_npsummabs_rL.append(model.npsummabs_rL)
+        common_npratio_r1.append(model.npratio_r1)
+        common_npratio_r2.append(model.npratio_r2)
+        common_npratio_rL.append(model.npratio_rL)
+        
+    display_common_scores(data=common_rouge1,names=common_modelnamelist,metricname='Rouge1')
+    display_common_scores(data=common_rouge2,names=common_modelnamelist,metricname='Rouge2')
+    display_common_scores(data=common_rougeL,names=common_modelnamelist,metricname='RougeL')
+    display_common_scores(data=common_nprefabs_r1,names=common_modelnamelist,metricname='RefABS_R1')
+    display_common_scores(data=common_nprefabs_r2,names=common_modelnamelist,metricname='RefABS_R2')
+    display_common_scores(data=common_nprefabs_rL,names=common_modelnamelist,metricname='RefABS_RL')
+    display_common_scores(data=common_npsummabs_r1,names=common_modelnamelist,metricname='SUMMABS_R1')
+    display_common_scores(data=common_npsummabs_r2,names=common_modelnamelist,metricname='SUMMABS_R2')
+    display_common_scores(data=common_npsummabs_rL,names=common_modelnamelist,metricname='SUMMABS_RL')
+    display_common_scores(data=common_npratio_r1,names=common_modelnamelist,metricname='ABSRATIO_R1')
+    display_common_scores(data=common_npratio_r2,names=common_modelnamelist,metricname='ABSRATIO_R2')
+    display_common_scores(data=common_npratio_rL,names=common_modelnamelist,metricname='ABSRATIO_RL')
+        
+        
+    
 
 #Filelist=['Dataset_distilbart.csv','Dataset_bart.csv','Dataset_pegasus.csv','Dataset_huggingface.csv']
 Filelist=[]
