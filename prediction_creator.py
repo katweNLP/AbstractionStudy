@@ -3,6 +3,8 @@
 #**1. Libraries** **Installation**
 """
 
+from google.colab import drive
+drive.mount('/content/drive')
 
 !pip install transformers
 !pip install sentencepiece
@@ -23,7 +25,7 @@ from io import StringIO
 from time import sleep
 
 m_location="metrics_cache/"
-p_location="prediction_cache/"
+p_location="prediction_cache1/"
 
 
 
@@ -123,7 +125,11 @@ for model in Lines:
     
         
 for i in range(len(modellist)):
-    generate_prediction(modellist[i],Filelist[i],input,ref,N=150)      
+    generate_prediction(modellist[i],Filelist[i],input,ref,N=3)
+    
+        
+
+      
 
 
 
